@@ -21,7 +21,11 @@ fn create_shader_program() -> Result<Program, String> {
 }
 
 fn create_triangle() -> gl::types::GLuint {
-    let vertices: Vec<f32> = vec![-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0];
+    let vertices: Vec<f32> = vec![
+        -0.5, -0.5, 0.0, 1.0, 0.0, 0.0,
+        0.5, -0.5, 0.0, 0.0, 1.0, 0.0,
+        0.0, 0.5, 0.0, 0.0, 0.0, 1.0,
+    ];
     let mut vbo: gl::types::GLuint = 0;
     unsafe {
         gl::GenBuffers(1, &mut vbo);
@@ -49,14 +53,23 @@ fn create_triangle() -> gl::types::GLuint {
             3,
             gl::FLOAT,
             gl::FALSE,
-            (3 * std::mem::size_of::<f32>()) as gl::types::GLint,
+            (6 * std::mem::size_of::<f32>()) as gl::types::GLint,
             std::ptr::null(),
+        );
+
+        gl::EnableVertexAttribArray(1);
+        gl::VertexAttribPointer(
+            1,
+            3,
+            gl::FLOAT,
+            gl::FALSE,
+            (6 * std::mem::size_of::<f32>()) as gl::types::GLint,
+            (3 * std::mem::size_of::<f32>()) as *const gl::types::GLvoid,
         );
 
         gl::BindVertexArray(0);
         gl::BindBuffer(gl::ARRAY_BUFFER, 0);
     }
-
     vao
 }
 
@@ -77,19 +90,20 @@ fn main() {
         .build()
         .unwrap();
 
-    let _gl_context = window.gl_create_context().unwrap();
-    let _gl = gl::load_with(|s| video.gl_get_proc_address(s) as *const std::os::raw::c_void);
     let mut event_pump = sdl.event_pump().unwrap();
 
-    unsafe {
-        gl::Viewport(0, 0, 800, 600);
-        gl::ClearColor(0.3, 0.3, 0.5, 1.0);
-    }
+    let _gl_context = window.gl_create_context().unwrap();
+    let _gl = gl::load_with(|s| video.gl_get_proc_address(s) as *const std::os::raw::c_void);
 
     let program = create_shader_program().unwrap();
     let vao = create_triangle();
 
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+    unsafe {
+        gl::Viewport(0, 0, 800, 600);
+        gl::ClearColor(0.3, 0.3, 0.5, 1.0);
+    }
 
     'main: loop {
         unsafe {
