@@ -13,33 +13,34 @@ fn create_cstring_with_len(len: usize) -> CString {
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 pub struct Program {
+    gl: gl::Gl,
     id: gl::types::GLuint,
 }
 
 impl Program {
-    pub fn from_shaders(shaders: &[Shader]) -> Result<Program, String> {
-        let id = unsafe { gl::CreateProgram() };
+    pub fn from_shaders(gl: &gl::Gl, shaders: &[Shader]) -> Result<Program, String> {
+        let id = unsafe { gl.CreateProgram() };
         for s in shaders {
             unsafe {
-                gl::AttachShader(id, s.id());
+                gl.AttachShader(id, s.id());
             }
         }
         unsafe {
-            gl::LinkProgram(id);
+            gl.LinkProgram(id);
         }
 
         let mut success: gl::types::GLint = 1;
         unsafe {
-            gl::GetProgramiv(id, gl::LINK_STATUS, &mut success);
+            gl.GetProgramiv(id, gl::LINK_STATUS, &mut success);
         }
         if success == 0 {
             let mut len: gl::types::GLint = 0;
             unsafe {
-                gl::GetProgramiv(id, gl::INFO_LOG_LENGTH, &mut len);
+                gl.GetProgramiv(id, gl::INFO_LOG_LENGTH, &mut len);
             }
             let error: CString = create_cstring_with_len(len as usize);
             unsafe {
-                gl::GetProgramInfoLog(
+                gl.GetProgramInfoLog(
                     id,
                     len,
                     std::ptr::null_mut(),
@@ -51,11 +52,14 @@ impl Program {
 
         for s in shaders {
             unsafe {
-                gl::DetachShader(id, s.id());
+                gl.DetachShader(id, s.id());
             }
         }
 
-        Ok(Program { id: id })
+        Ok(Program {
+            gl: gl.clone(),
+            id: id,
+        })
     }
 
     pub fn id(&self) -> gl::types::GLuint {
@@ -64,7 +68,7 @@ impl Program {
 
     pub fn set_used(&self) {
         unsafe {
-            gl::UseProgram(self.id);
+            self.gl.UseProgram(self.id);
         }
     }
 }
@@ -72,7 +76,7 @@ impl Program {
 impl Drop for Program {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteProgram(self.id);
+            self.gl.DeleteProgram(self.id);
         }
     }
 }
@@ -80,21 +84,22 @@ impl Drop for Program {
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 pub struct Shader {
+    gl: gl::Gl,
     id: gl::types::GLuint,
 }
 
 impl Shader {
-    fn from_source(source: &CStr, kind: gl::types::GLuint) -> Result<Shader, String> {
-        let id = shader_from_source(source, kind)?;
-        Ok(Shader { id })
+    fn from_source(gl: &gl::Gl, source: &CStr, kind: gl::types::GLuint) -> Result<Shader, String> {
+        let id = shader_from_source(gl, source, kind)?;
+        Ok(Shader { gl: gl.clone(), id })
     }
 
-    pub fn vertex_from_source(source: &CStr) -> Result<Shader, String> {
-        Shader::from_source(source, gl::VERTEX_SHADER)
+    pub fn vertex_from_source(gl: &gl::Gl, source: &CStr) -> Result<Shader, String> {
+        Shader::from_source(gl, source, gl::VERTEX_SHADER)
     }
 
-    pub fn fragment_from_source(source: &CStr) -> Result<Shader, String> {
-        Shader::from_source(source, gl::FRAGMENT_SHADER)
+    pub fn fragment_from_source(gl: &gl::Gl, source: &CStr) -> Result<Shader, String> {
+        Shader::from_source(gl, source, gl::FRAGMENT_SHADER)
     }
 
     pub fn id(&self) -> gl::types::GLuint {
@@ -105,29 +110,33 @@ impl Shader {
 impl Drop for Shader {
     fn drop(&mut self) {
         unsafe {
-            gl::DeleteShader(self.id);
+            self.gl.DeleteShader(self.id);
         }
     }
 }
 
-fn shader_from_source(source: &CStr, kind: gl::types::GLuint) -> Result<gl::types::GLuint, String> {
-    let id = unsafe { gl::CreateShader(kind) };
+fn shader_from_source(
+    gl: &gl::Gl,
+    source: &CStr,
+    kind: gl::types::GLuint,
+) -> Result<gl::types::GLuint, String> {
+    let id = unsafe { gl.CreateShader(kind) };
     unsafe {
-        gl::ShaderSource(id, 1, &source.as_ptr(), std::ptr::null());
-        gl::CompileShader(id);
+        gl.ShaderSource(id, 1, &source.as_ptr(), std::ptr::null());
+        gl.CompileShader(id);
     }
     let mut success: gl::types::GLint = 1;
     unsafe {
-        gl::GetShaderiv(id, gl::COMPILE_STATUS, &mut success);
+        gl.GetShaderiv(id, gl::COMPILE_STATUS, &mut success);
     }
     if success == 0 {
         let mut len: gl::types::GLint = 0;
         unsafe {
-            gl::GetShaderiv(id, gl::INFO_LOG_LENGTH, &mut len);
+            gl.GetShaderiv(id, gl::INFO_LOG_LENGTH, &mut len);
         }
         let error: CString = create_cstring_with_len(len as usize);
         unsafe {
-            gl::GetShaderInfoLog(
+            gl.GetShaderInfoLog(
                 id,
                 len,
                 std::ptr::null_mut(),

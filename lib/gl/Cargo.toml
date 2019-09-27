@@ -1,15 +1,13 @@
 [package]
-name = "opengl"
+name = "gl"
 version = "0.1.0"
 authors = ["Robert Krahn <robert.krahn@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[dependencies]
-sdl2 = "0.32.2"
-gl = { path = "lib/gl" }
-
 [features]
-# default = ["gl_debugr"]
-gl_debug = ["gl/debug"]
+debug = []
+
+[build-dependencies]
+gl_generator = "0.13.0"
