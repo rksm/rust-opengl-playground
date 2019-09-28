@@ -1,3 +1,4 @@
+use crate::resources::{self, Resources};
 use gl;
 use std;
 use std::ffi::{CStr, CString};
@@ -12,13 +13,41 @@ fn create_cstring_with_len(len: usize) -> CString {
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
+#[derive(Debug)]
+pub enum Error {
+    LinkError {
+        message: String,
+    },
+    CompileError {
+        message: String,
+    },
+    CannotDetermineShaderTypeForResource {
+        name: String,
+    },
+    ResourceLoad {
+        name: String,
+        inner: resources::Error,
+    },
+}
+
+// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
 pub struct Program {
     gl: gl::Gl,
     id: gl::types::GLuint,
 }
 
 impl Program {
-    pub fn from_shaders(gl: &gl::Gl, shaders: &[Shader]) -> Result<Program, String> {
+    pub fn from_res(gl: &gl::Gl, res: &Resources, name: &str) -> Result<Program, Error> {
+        const POSSIBLE_EXT: [&str; 2] = [".vert", ".frag"];
+        let shaders = POSSIBLE_EXT
+            .iter()
+            .map(|file_ext| Shader::from_res(gl, res, &format!("{}{}", name, file_ext)))
+            .collect::<Result<Vec<Shader>, Error>>()?;
+        Self::from_shaders(gl, &shaders)
+    }
+
+    fn from_shaders(gl: &gl::Gl, shaders: &[Shader]) -> Result<Program, Error> {
         let id = unsafe { gl.CreateProgram() };
         for s in shaders {
             unsafe {
@@ -47,7 +76,9 @@ impl Program {
                     error.as_ptr() as *mut gl::types::GLchar,
                 );
             }
-            return Err(error.to_string_lossy().into_owned());
+            return Err(Error::LinkError {
+                message: error.to_string_lossy().into_owned(),
+            });
         }
 
         for s in shaders {
@@ -56,10 +87,7 @@ impl Program {
             }
         }
 
-        Ok(Program {
-            gl: gl.clone(),
-            id: id,
-        })
+        Ok(Program { gl: gl.clone(), id })
     }
 
     pub fn id(&self) -> gl::types::GLuint {
@@ -89,17 +117,24 @@ pub struct Shader {
 }
 
 impl Shader {
-    fn from_source(gl: &gl::Gl, source: &CStr, kind: gl::types::GLuint) -> Result<Shader, String> {
+    fn from_res(gl: &gl::Gl, res: &Resources, name: &str) -> Result<Shader, Error> {
+        const POSSIBLE_EXT: [(&str, gl::types::GLenum); 2] =
+            [(".vert", gl::VERTEX_SHADER), (".frag", gl::FRAGMENT_SHADER)];
+        let shader_kind = POSSIBLE_EXT
+            .iter()
+            .find(|&&(file_ext, _)| name.ends_with(file_ext))
+            .map(|&(_, kind)| kind)
+            .ok_or_else(|| Error::CannotDetermineShaderTypeForResource { name: name.into() })?;
+        let source = res.load_cstring(name).map_err(|e| Error::ResourceLoad {
+            name: name.into(),
+            inner: e,
+        })?;
+        Shader::from_source(gl, &source, shader_kind)
+    }
+
+    fn from_source(gl: &gl::Gl, source: &CStr, kind: gl::types::GLuint) -> Result<Shader, Error> {
         let id = shader_from_source(gl, source, kind)?;
         Ok(Shader { gl: gl.clone(), id })
-    }
-
-    pub fn vertex_from_source(gl: &gl::Gl, source: &CStr) -> Result<Shader, String> {
-        Shader::from_source(gl, source, gl::VERTEX_SHADER)
-    }
-
-    pub fn fragment_from_source(gl: &gl::Gl, source: &CStr) -> Result<Shader, String> {
-        Shader::from_source(gl, source, gl::FRAGMENT_SHADER)
     }
 
     pub fn id(&self) -> gl::types::GLuint {
@@ -119,7 +154,7 @@ fn shader_from_source(
     gl: &gl::Gl,
     source: &CStr,
     kind: gl::types::GLuint,
-) -> Result<gl::types::GLuint, String> {
+) -> Result<gl::types::GLuint, Error> {
     let id = unsafe { gl.CreateShader(kind) };
     unsafe {
         gl.ShaderSource(id, 1, &source.as_ptr(), std::ptr::null());
@@ -143,7 +178,9 @@ fn shader_from_source(
                 error.as_ptr() as *mut gl::types::GLchar,
             );
         }
-        return Err(error.to_string_lossy().into_owned());
+        return Err(Error::CompileError {
+            message: error.to_string_lossy().into_owned(),
+        });
     }
 
     Ok(id)

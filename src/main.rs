@@ -2,23 +2,13 @@ extern crate gl;
 extern crate sdl2;
 
 pub mod render_gl;
+pub mod resources;
 
-use render_gl::{Program, Shader};
-use std::ffi::CString;
+use render_gl::Program;
+use resources::Resources;
+use std::path::Path;
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
-fn create_shader_program(gl: &gl::Gl) -> Result<Program, String> {
-    let v_source = CString::new(include_str!("triangle.vert"))
-        .or(Err("Vertex shader contains non-utf8 content."))?;
-    let f_source = CString::new(include_str!("triangle.frag"))
-        .or(Err("Fragment shader contains non-utf8 content."))?;
-    let v_shader = Shader::vertex_from_source(gl, &v_source)?;
-    let f_shader = Shader::fragment_from_source(gl, &f_source)?;
-    let p = Program::from_shaders(gl, &[v_shader, f_shader])?;
-    p.set_used();
-    Ok(p)
-}
 
 fn create_triangle(gl: &gl::Gl) -> gl::types::GLuint {
     let vertices: Vec<f32> = vec![
@@ -73,6 +63,7 @@ fn create_triangle(gl: &gl::Gl) -> gl::types::GLuint {
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 fn main() {
+    let res = Resources::from_relative_exe_path(Path::new("assets")).unwrap();
     let sdl = sdl2::init().unwrap();
     let video = sdl.video().unwrap();
 
@@ -86,13 +77,12 @@ fn main() {
         .resizable()
         .build()
         .unwrap();
-
     let mut event_pump = sdl.event_pump().unwrap();
 
     let _gl_context = window.kgl_create_context().unwrap();
     let gl = gl::Gl::load_with(|s| video.gl_get_proc_address(s) as *const std::os::raw::c_void);
 
-    let program = create_shader_program(&gl).unwrap();
+    let program = Program::from_res(&gl, &res, "shaders/triangle").unwrap();
     let vao = create_triangle(&gl);
 
     // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
