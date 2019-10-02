@@ -12,6 +12,7 @@ walkdir = "*"
 [dependencies]
 sdl2 = "0.32.2"
 gl = { path = "lib/gl" }
+failure = "0.1.5"
 
 [features]
 # default = ["gl_debugr"]

@@ -1,12 +1,40 @@
-extern crate gl;
-extern crate sdl2;
-
 pub mod render_gl;
 pub mod resources;
 
+use failure;
 use render_gl::Program;
 use resources::Resources;
 use std::path::Path;
+
+pub fn failure_to_string(e: failure::Error) -> String {
+    use std::fmt::Write;
+
+    let mut result = String::new();
+    for (i, cause) in e
+        .iter_chain()
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .enumerate()
+    {
+        if i > 0 {
+            writeln!(&mut result, "  Which caused:").unwrap();
+        }
+        write!(&mut result, "{}", cause).unwrap();
+        if let Some(backtrace) = cause.backtrace() {
+            let bactrace_str = format!("{}", backtrace);
+            if bactrace_str.len() > 0 {
+                writeln!(&mut result, " This happened at {}", backtrace).unwrap();
+            } else {
+                writeln!(&mut result).unwrap();
+            }
+        } else {
+            writeln!(&mut result).unwrap();
+        }
+    }
+
+    result
+}
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
@@ -62,60 +90,99 @@ fn create_triangle(gl: &gl::Gl) -> gl::types::GLuint {
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-fn main() {
-    let res = Resources::from_relative_exe_path(Path::new("assets")).unwrap();
-    let sdl = sdl2::init().unwrap();
-    let video = sdl.video().unwrap();
+const WINDOW_TITLE: &str = "OpenGL ";
+
+struct State {
+    _sdl: sdl2::Sdl,
+    gl: gl::Gl,
+    _gl_context: sdl2::video::GLContext,
+    program: Program,
+    vao: gl::types::GLuint,
+    window: sdl2::video::Window,
+    event_pump: sdl2::EventPump,
+}
+
+fn setup() -> Result<State, failure::Error> {
+    let res = Resources::from_relative_exe_path(Path::new("assets"))?;
+    let sdl = sdl2::init().map_err(failure::err_msg)?;
+    let video = sdl.video().map_err(failure::err_msg)?;
 
     let gl_attr = video.gl_attr();
     gl_attr.set_context_profile(sdl2::video::GLProfile::Core);
     gl_attr.set_context_version(3, 3);
 
     let window = video
-        .window("test", 800, 600)
+        .window(WINDOW_TITLE, 800, 600)
         .opengl()
         .resizable()
         .build()
-        .unwrap();
-    let mut event_pump = sdl.event_pump().unwrap();
+        .map_err(failure::err_msg)?;
+    let event_pump = sdl.event_pump().map_err(failure::err_msg)?;
 
-    let _gl_context = window.kgl_create_context().unwrap();
+    let gl_context = window.kgl_create_context().map_err(failure::err_msg)?;
     let gl = gl::Gl::load_with(|s| video.gl_get_proc_address(s) as *const std::os::raw::c_void);
 
-    let program = Program::from_res(&gl, &res, "shaders/triangle").unwrap();
+    let program = Program::from_res(&gl, &res, "shaders/triangle")?;
     let vao = create_triangle(&gl);
-
-    // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
     unsafe {
         gl.Viewport(0, 0, 800, 600);
         gl.ClearColor(0.3, 0.3, 0.5, 1.0);
     }
 
-    'main: loop {
-        unsafe {
-            gl.Clear(gl::COLOR_BUFFER_BIT);
-        }
-        program.set_used();
-        unsafe {
-            gl.BindVertexArray(vao);
-            gl.DrawArrays(gl::TRIANGLES, 0, 3);
-        }
-        window.gl_swap_window();
+    Ok(State {
+        _sdl: sdl,
+        _gl_context: gl_context,
+        gl,
+        program,
+        vao,
+        window,
+        event_pump,
+    })
+}
 
-        for event in event_pump.poll_iter() {
-            use sdl2::event::Event::{Quit, Window};
-            use sdl2::event::WindowEvent::Resized;
-            match event {
-                Quit { .. } => break 'main,
-                Window { win_event, .. } => match win_event {
-                    Resized(w, h) => unsafe {
-                        gl.Viewport(0, 0, w, h);
+fn run(state: State) -> Result<(), failure::Error> {
+    match state {
+        State {
+            gl,
+            program,
+            vao,
+            window,
+            mut event_pump,
+            ..
+        } => 'main: loop {
+            unsafe {
+                gl.Clear(gl::COLOR_BUFFER_BIT);
+            }
+            program.set_used();
+            unsafe {
+                gl.BindVertexArray(vao);
+                gl.DrawArrays(gl::TRIANGLES, 0, 3);
+            }
+            window.gl_swap_window();
+
+            for event in event_pump.poll_iter() {
+                use sdl2::event::Event::{Quit, Window};
+                use sdl2::event::WindowEvent::Resized;
+                match event {
+                    Quit { .. } => break 'main,
+                    Window { win_event, .. } => match win_event {
+                        Resized(w, h) => unsafe {
+                            gl.Viewport(0, 0, w, h);
+                        },
+                        _ => {}
                     },
                     _ => {}
-                },
-                _ => {}
+                }
             }
-        }
+        },
+    };
+    Ok(())
+}
+
+fn main() {
+    if let Err(e) = setup().and_then(run) {
+        println!("{}", failure_to_string(e));
+        std::process::exit(1);
     }
 }

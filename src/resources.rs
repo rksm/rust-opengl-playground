@@ -2,11 +2,15 @@ use std::ffi::CString;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::{ffi, fs, io};
+use failure::Fail;
 
-#[derive(Debug)]
+#[derive(Debug, Fail)]
 pub enum Error {
+    #[fail(display = "Failed to get executable path")]
     FaildToGetExecPath,
-    Io(io::Error),
+    #[fail(display = "IO error")]
+    Io(#[cause] io::Error),
+    #[fail(display = "Failed to read CString from file that contains 0")]
     FileContainsNil,
 }
 

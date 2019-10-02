@@ -1,4 +1,5 @@
 use crate::resources::{self, Resources};
+use failure::Fail;
 use gl;
 use std;
 use std::ffi::{CStr, CString};
@@ -13,20 +14,18 @@ fn create_cstring_with_len(len: usize) -> CString {
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-#[derive(Debug)]
+#[derive(Debug, Fail)]
 pub enum Error {
-    LinkError {
-        message: String,
-    },
-    CompileError {
-        message: String,
-    },
-    CannotDetermineShaderTypeForResource {
-        name: String,
-    },
+    #[fail(display = "Failed to link program {}", message)]
+    LinkError { message: String },
+    #[fail(display = "Failed to compile program {}", message)]
+    CompileError { message: String },
+    #[fail(display = "Cannot find shader type for {}", name)]
+    CannotDetermineShaderTypeForResource { name: String },
+    #[fail(display = "Cannot load resource for {}", name)]
     ResourceLoad {
         name: String,
-        inner: resources::Error,
+        #[cause] inner: resources::Error,
     },
 }
 
