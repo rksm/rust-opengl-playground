@@ -1,1 +1,1 @@
-This is mostly me following http://nercury.github.io/rust/opengl/tutorial/2018/07/12/opengl-in-rust-from-scratch-11-vertex-data-types.html and learning about "modern" OpenGL and rust magic.
+This is mostly me following the excellent Rust and OpenGL tutorial http://nercury.github.io/rust/opengl/tutorial/2018/02/08/opengl-in-rust-from-scratch-00-setup.html and learning about "modern" OpenGL and rust magic.
