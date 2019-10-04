@@ -1,86 +1,13 @@
 pub mod render_gl;
 pub mod resources;
+mod triangle;
+mod debug;
 
 use failure;
-use render_gl::buffer::{ArrayBuffer, VertexArray};
-use render_gl::data;
-use render_gl::Program;
-use render_gl_derive::VertexAttribPointers;
 use resources::Resources;
 use std::path::Path;
-
-pub fn failure_to_string(e: failure::Error) -> String {
-    use std::fmt::Write;
-
-    let mut result = String::new();
-    for (i, cause) in e
-        .iter_chain()
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-        .enumerate()
-    {
-        if i > 0 {
-            writeln!(&mut result, "  Which caused:").unwrap();
-        }
-        write!(&mut result, "{}", cause).unwrap();
-        if let Some(backtrace) = cause.backtrace() {
-            let backtrace_sir = format!("{}", backtrace);
-            if backtrace_sir.len() > 0 {
-                writeln!(&mut result, " This happened at {}", backtrace).unwrap();
-            } else {
-                writeln!(&mut result).unwrap();
-            }
-        } else {
-            writeln!(&mut result).unwrap();
-        }
-    }
-
-    result
-}
-
-// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
-#[derive(VertexAttribPointers, Debug, Clone, Copy)]
-#[repr(C, packed)]
-struct Vertex {
-    #[location = 0]
-    pos: data::f32_f32_f32,
-    #[location = 1]
-    clr: data::u2_u10_u10_u10_rev_float,
-}
-
-fn create_triangle(gl: &gl::Gl) -> (VertexArray, ArrayBuffer) {
-    let vertices: Vec<Vertex> = vec![
-        Vertex {
-            pos: (-0.5, -0.5, 0.0).into(),
-            clr: (1.0, 0.0, 0.0, 1.0).into(),
-        },
-        Vertex {
-            pos: (0.5, -0.5, 0.0).into(),
-            clr: (0.0, 1.0, 0.0, 1.0).into(),
-        },
-        Vertex {
-            pos: (0.0, 0.5, 0.0).into(),
-            clr: (0.0, 0.0, 1.0, 1.0).into(),
-        },
-    ];
-
-    let vao = VertexArray::new(gl);
-    let buffer = ArrayBuffer::new(gl);
-    vao.bind();
-    buffer.bind();
-    buffer.static_draw(&vertices);
-    buffer.unbind();
-
-    buffer.bind();
-    Vertex::vertex_attrib_pointers(&gl);
-    buffer.unbind();
-    vao.unbind();
-    (vao, buffer)
-}
-
-// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+use triangle::Triangle;
+use debug::failure_to_string;
 
 const WINDOW_TITLE: &str = "OpenGL ";
 
@@ -88,9 +15,7 @@ struct State {
     _sdl: sdl2::Sdl,
     gl: gl::Gl,
     _gl_context: sdl2::video::GLContext,
-    program: Program,
-    vao: VertexArray,
-    _buffer: ArrayBuffer,
+    triangle: Triangle,
     window: sdl2::video::Window,
     event_pump: sdl2::EventPump,
 }
@@ -114,9 +39,11 @@ fn setup() -> Result<State, failure::Error> {
 
     let gl_context = window.kgl_create_context().map_err(failure::err_msg)?;
     let gl = gl::Gl::load_with(|s| video.gl_get_proc_address(s) as *const std::os::raw::c_void);
+    let triangle = Triangle::new(&res, &gl)?;
 
-    let program = Program::from_res(&gl, &res, "shaders/triangle")?;
-    let (vao, buffer) = create_triangle(&gl);
+    println!("size of window: {}", std::mem::size_of_val(&window));
+    println!("size of gl: {}", std::mem::size_of_val(&gl));
+    println!("size of triangle: {}", std::mem::size_of_val(&triangle));
 
     unsafe {
         gl.Viewport(0, 0, 800, 600);
@@ -127,9 +54,7 @@ fn setup() -> Result<State, failure::Error> {
         _sdl: sdl,
         _gl_context: gl_context,
         gl,
-        program,
-        vao,
-        _buffer: buffer,
+        triangle,
         window,
         event_pump,
     })
@@ -139,8 +64,7 @@ fn run(state: State) -> Result<(), failure::Error> {
     match state {
         State {
             gl,
-            program,
-            vao,
+            triangle,
             window,
             mut event_pump,
             ..
@@ -148,8 +72,7 @@ fn run(state: State) -> Result<(), failure::Error> {
             unsafe {
                 gl.Clear(gl::COLOR_BUFFER_BIT);
             }
-            program.set_used();
-            vao.bind();
+            triangle.render(&gl);
             unsafe {
                 gl.DrawArrays(gl::TRIANGLES, 0, 3);
             }
