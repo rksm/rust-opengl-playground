@@ -2,7 +2,7 @@ pub mod render_gl;
 pub mod resources;
 
 use failure;
-use render_gl::buffer::{ArrayBuffer,VertexArray};
+use render_gl::buffer::{ArrayBuffer, VertexArray};
 use render_gl::data;
 use render_gl::Program;
 use render_gl_derive::VertexAttribPointers;
@@ -144,34 +144,32 @@ fn run(state: State) -> Result<(), failure::Error> {
             window,
             mut event_pump,
             ..
-        } => {
-            'main: loop {
-                unsafe {
-                    gl.Clear(gl::COLOR_BUFFER_BIT);
-                }
-                program.set_used();
-                vao.bind();
-                unsafe {
-                    gl.DrawArrays(gl::TRIANGLES, 0, 3);
-                }
-                window.gl_swap_window();
+        } => 'main: loop {
+            unsafe {
+                gl.Clear(gl::COLOR_BUFFER_BIT);
+            }
+            program.set_used();
+            vao.bind();
+            unsafe {
+                gl.DrawArrays(gl::TRIANGLES, 0, 3);
+            }
+            window.gl_swap_window();
 
-                for event in event_pump.poll_iter() {
-                    use sdl2::event::Event::{Quit, Window};
-                    use sdl2::event::WindowEvent::Resized;
-                    match event {
-                        Quit { .. } => break 'main,
-                        Window { win_event, .. } => match win_event {
-                            Resized(w, h) => unsafe {
-                                gl.Viewport(0, 0, w, h);
-                            },
-                            _ => {}
+            for event in event_pump.poll_iter() {
+                use sdl2::event::Event::{Quit, Window};
+                use sdl2::event::WindowEvent::Resized;
+                match event {
+                    Quit { .. } => break 'main,
+                    Window { win_event, .. } => match win_event {
+                        Resized(w, h) => unsafe {
+                            gl.Viewport(0, 0, w, h);
                         },
                         _ => {}
-                    }
+                    },
+                    _ => {}
                 }
             }
-        }
+        },
     };
     Ok(())
 }
