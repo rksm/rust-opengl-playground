@@ -13,6 +13,7 @@ walkdir = "*"
 sdl2 = "0.32.2"
 gl = { path = "lib/gl" }
 failure = "0.1.5"
+render_gl_derive = { path = "lib/render_gl_derive" }
 
 [features]
 # default = ["gl_debugr"]

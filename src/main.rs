@@ -4,6 +4,7 @@ pub mod resources;
 use failure;
 use render_gl::data;
 use render_gl::Program;
+use render_gl_derive::VertexAttribPointers;
 use resources::Resources;
 use std::path::Path;
 
@@ -39,31 +40,17 @@ pub fn failure_to_string(e: failure::Error) -> String {
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-#[derive(Debug, Clone, Copy)]
+#[derive(VertexAttribPointers, Debug, Clone, Copy)]
 #[repr(C, packed)]
 struct Vertex {
+    #[location = 0]
     pos: data::f32_f32_f32,
+    #[location = 1]
     clr: data::f32_f32_f32,
 }
 
-impl Vertex {
-    fn attrib_pointers(gl: &gl::Gl) {
-        let stride = 6 * std::mem::size_of::<f32>();
-        let location = 0;
-        let offset = 0;
-        unsafe {
-            data::f32_f32_f32::vertex_attrib_pointer(gl, location, stride, offset);
-        }
-        let location = 1;
-        let offset = offset + std::mem::size_of::<data::f32_f32_f32>();
-        unsafe {
-            data::f32_f32_f32::vertex_attrib_pointer(gl, location, stride, offset);
-        }
-    }
-}
 fn create_triangle(gl: &gl::Gl) -> gl::types::GLuint {
     let vertices: Vec<Vertex> = vec![
-        // position               // colors
         Vertex {
             pos: (-0.5, -0.5, 0.0).into(),
             clr: (1.0, 0.0, 0.0).into(),
@@ -98,7 +85,7 @@ fn create_triangle(gl: &gl::Gl) -> gl::types::GLuint {
         gl.BindVertexArray(vao);
         gl.BindBuffer(gl::ARRAY_BUFFER, vbo);
 
-        Vertex::attrib_pointers(&gl);
+        Vertex::vertex_attrib_pointers(&gl);
         gl.BindVertexArray(0);
         gl.BindBuffer(gl::ARRAY_BUFFER, 0);
     }
