@@ -46,22 +46,22 @@ struct Vertex {
     #[location = 0]
     pos: data::f32_f32_f32,
     #[location = 1]
-    clr: data::f32_f32_f32,
+    clr: data::u2_u10_u10_u10_rev_float,
 }
 
 fn create_triangle(gl: &gl::Gl) -> gl::types::GLuint {
     let vertices: Vec<Vertex> = vec![
         Vertex {
             pos: (-0.5, -0.5, 0.0).into(),
-            clr: (1.0, 0.0, 0.0).into(),
+            clr: (1.0, 0.0, 0.0, 1.0).into(),
         },
         Vertex {
             pos: (0.5, -0.5, 0.0).into(),
-            clr: (0.0, 1.0, 0.0).into(),
+            clr: (0.0, 1.0, 0.0, 1.0).into(),
         },
         Vertex {
             pos: (0.0, 0.5, 0.0).into(),
-            clr: (0.0, 0.0, 1.0).into(),
+            clr: (0.0, 0.0, 1.0, 1.0).into(),
         },
     ];
     let mut vbo: gl::types::GLuint = 0;
