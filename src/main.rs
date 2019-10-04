@@ -2,6 +2,7 @@ pub mod render_gl;
 pub mod resources;
 
 use failure;
+use render_gl::buffer::{ArrayBuffer,VertexArray};
 use render_gl::data;
 use render_gl::Program;
 use render_gl_derive::VertexAttribPointers;
@@ -49,7 +50,7 @@ struct Vertex {
     clr: data::u2_u10_u10_u10_rev_float,
 }
 
-fn create_triangle(gl: &gl::Gl) -> gl::types::GLuint {
+fn create_triangle(gl: &gl::Gl) -> (VertexArray, ArrayBuffer) {
     let vertices: Vec<Vertex> = vec![
         Vertex {
             pos: (-0.5, -0.5, 0.0).into(),
@@ -64,32 +65,19 @@ fn create_triangle(gl: &gl::Gl) -> gl::types::GLuint {
             clr: (0.0, 0.0, 1.0, 1.0).into(),
         },
     ];
-    let mut vbo: gl::types::GLuint = 0;
-    unsafe {
-        gl.GenBuffers(1, &mut vbo);
-        gl.BindBuffer(gl::ARRAY_BUFFER, vbo);
-        gl.BufferData(
-            gl::ARRAY_BUFFER,
-            (vertices.len() * std::mem::size_of::<Vertex>()) as gl::types::GLsizeiptr,
-            vertices.as_ptr() as *const gl::types::GLvoid,
-            gl::STATIC_DRAW,
-        );
-        gl.BindBuffer(gl::ARRAY_BUFFER, 0);
-    }
 
-    // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+    let vao = VertexArray::new(gl);
+    let buffer = ArrayBuffer::new(gl);
+    vao.bind();
+    buffer.bind();
+    buffer.static_draw(&vertices);
+    buffer.unbind();
 
-    let mut vao: gl::types::GLuint = 0;
-    unsafe {
-        gl.GenVertexArrays(1, &mut vao);
-        gl.BindVertexArray(vao);
-        gl.BindBuffer(gl::ARRAY_BUFFER, vbo);
-
-        Vertex::vertex_attrib_pointers(&gl);
-        gl.BindVertexArray(0);
-        gl.BindBuffer(gl::ARRAY_BUFFER, 0);
-    }
-    vao
+    buffer.bind();
+    Vertex::vertex_attrib_pointers(&gl);
+    buffer.unbind();
+    vao.unbind();
+    (vao, buffer)
 }
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
@@ -101,7 +89,8 @@ struct State {
     gl: gl::Gl,
     _gl_context: sdl2::video::GLContext,
     program: Program,
-    vao: gl::types::GLuint,
+    vao: VertexArray,
+    _buffer: ArrayBuffer,
     window: sdl2::video::Window,
     event_pump: sdl2::EventPump,
 }
@@ -127,7 +116,7 @@ fn setup() -> Result<State, failure::Error> {
     let gl = gl::Gl::load_with(|s| video.gl_get_proc_address(s) as *const std::os::raw::c_void);
 
     let program = Program::from_res(&gl, &res, "shaders/triangle")?;
-    let vao = create_triangle(&gl);
+    let (vao, buffer) = create_triangle(&gl);
 
     unsafe {
         gl.Viewport(0, 0, 800, 600);
@@ -140,6 +129,7 @@ fn setup() -> Result<State, failure::Error> {
         gl,
         program,
         vao,
+        _buffer: buffer,
         window,
         event_pump,
     })
@@ -154,32 +144,34 @@ fn run(state: State) -> Result<(), failure::Error> {
             window,
             mut event_pump,
             ..
-        } => 'main: loop {
-            unsafe {
-                gl.Clear(gl::COLOR_BUFFER_BIT);
-            }
-            program.set_used();
-            unsafe {
-                gl.BindVertexArray(vao);
-                gl.DrawArrays(gl::TRIANGLES, 0, 3);
-            }
-            window.gl_swap_window();
+        } => {
+            'main: loop {
+                unsafe {
+                    gl.Clear(gl::COLOR_BUFFER_BIT);
+                }
+                program.set_used();
+                vao.bind();
+                unsafe {
+                    gl.DrawArrays(gl::TRIANGLES, 0, 3);
+                }
+                window.gl_swap_window();
 
-            for event in event_pump.poll_iter() {
-                use sdl2::event::Event::{Quit, Window};
-                use sdl2::event::WindowEvent::Resized;
-                match event {
-                    Quit { .. } => break 'main,
-                    Window { win_event, .. } => match win_event {
-                        Resized(w, h) => unsafe {
-                            gl.Viewport(0, 0, w, h);
+                for event in event_pump.poll_iter() {
+                    use sdl2::event::Event::{Quit, Window};
+                    use sdl2::event::WindowEvent::Resized;
+                    match event {
+                        Quit { .. } => break 'main,
+                        Window { win_event, .. } => match win_event {
+                            Resized(w, h) => unsafe {
+                                gl.Viewport(0, 0, w, h);
+                            },
+                            _ => {}
                         },
                         _ => {}
-                    },
-                    _ => {}
+                    }
                 }
             }
-        },
+        }
     };
     Ok(())
 }
