@@ -12,6 +12,7 @@ walkdir = "*"
 [dependencies]
 sdl2 = "0.32.2"
 vec-2-10-10-10 = "0.1.2"
+nalgebra = "0.18.1"
 failure = "0.1.5"
 gl = { path = "lib/gl" }
 render_gl_derive = { path = "lib/render_gl_derive" }

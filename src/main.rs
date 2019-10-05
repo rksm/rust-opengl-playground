@@ -5,6 +5,8 @@ mod triangle;
 
 use debug::failure_to_string;
 use failure;
+use nalgebra as na;
+use render_gl::ColorBuffer;
 use render_gl::Viewport;
 use resources::Resources;
 use std::path::Path;
@@ -20,6 +22,7 @@ struct State {
     window: sdl2::video::Window,
     event_pump: sdl2::EventPump,
     viewport: Viewport,
+    color_buffer: ColorBuffer,
 }
 
 fn setup() -> Result<State, failure::Error> {
@@ -50,9 +53,8 @@ fn setup() -> Result<State, failure::Error> {
     println!("size of gl: {}", std::mem::size_of_val(&gl));
     println!("size of triangle: {}", std::mem::size_of_val(&triangle));
 
-    unsafe {
-        gl.ClearColor(0.3, 0.3, 0.5, 1.0);
-    }
+    let color_buffer = ColorBuffer::from_color(na::Vector3::new(0.3, 0.3, 0.5));
+    color_buffer.set_used(&gl);
 
     Ok(State {
         _sdl: sdl,
@@ -62,6 +64,7 @@ fn setup() -> Result<State, failure::Error> {
         window,
         event_pump,
         viewport,
+        color_buffer,
     })
 }
 
@@ -73,11 +76,10 @@ fn run(state: State) -> Result<(), failure::Error> {
             window,
             mut event_pump,
             mut viewport,
+            color_buffer,
             ..
         } => 'main: loop {
-            unsafe {
-                gl.Clear(gl::COLOR_BUFFER_BIT);
-            }
+            color_buffer.clear(&gl);
             triangle.render(&gl);
             window.gl_swap_window();
 
