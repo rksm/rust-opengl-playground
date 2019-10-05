@@ -6,6 +6,9 @@
       <sourceFolder url="file://$MODULE_DIR$/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/../opengl\examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../opengl\tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/../opengl\benches" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

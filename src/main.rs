@@ -46,7 +46,7 @@ fn setup() -> Result<State, failure::Error> {
 
     let event_pump = sdl.event_pump().map_err(failure::err_msg)?;
 
-    let gl_context = window.kgl_create_context().map_err(failure::err_msg)?;
+    let gl_context = window.gl_create_context().map_err(failure::err_msg)?;
     let gl = gl::Gl::load_with(|s| video.gl_get_proc_address(s) as *const std::os::raw::c_void);
     let res = Resources::from_relative_exe_path(Path::new("assets"))?;
     let triangle = Triangle::new(&res, &gl)?;
