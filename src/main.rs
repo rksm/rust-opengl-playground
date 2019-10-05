@@ -1,13 +1,14 @@
+mod debug;
 pub mod render_gl;
 pub mod resources;
 mod triangle;
-mod debug;
 
+use debug::failure_to_string;
 use failure;
+use render_gl::Viewport;
 use resources::Resources;
 use std::path::Path;
 use triangle::Triangle;
-use debug::failure_to_string;
 
 const WINDOW_TITLE: &str = "OpenGL ";
 
@@ -18,6 +19,7 @@ struct State {
     triangle: Triangle,
     window: sdl2::video::Window,
     event_pump: sdl2::EventPump,
+    viewport: Viewport,
 }
 
 fn setup() -> Result<State, failure::Error> {
@@ -40,13 +42,15 @@ fn setup() -> Result<State, failure::Error> {
     let gl_context = window.kgl_create_context().map_err(failure::err_msg)?;
     let gl = gl::Gl::load_with(|s| video.gl_get_proc_address(s) as *const std::os::raw::c_void);
     let triangle = Triangle::new(&res, &gl)?;
+    let viewport = Viewport::for_window(800, 600);
+
+    viewport.set_used(&gl);
 
     println!("size of window: {}", std::mem::size_of_val(&window));
     println!("size of gl: {}", std::mem::size_of_val(&gl));
     println!("size of triangle: {}", std::mem::size_of_val(&triangle));
 
     unsafe {
-        gl.Viewport(0, 0, 800, 600);
         gl.ClearColor(0.3, 0.3, 0.5, 1.0);
     }
 
@@ -57,6 +61,7 @@ fn setup() -> Result<State, failure::Error> {
         triangle,
         window,
         event_pump,
+        viewport,
     })
 }
 
@@ -67,15 +72,13 @@ fn run(state: State) -> Result<(), failure::Error> {
             triangle,
             window,
             mut event_pump,
+            mut viewport,
             ..
         } => 'main: loop {
             unsafe {
                 gl.Clear(gl::COLOR_BUFFER_BIT);
             }
             triangle.render(&gl);
-            unsafe {
-                gl.DrawArrays(gl::TRIANGLES, 0, 3);
-            }
             window.gl_swap_window();
 
             for event in event_pump.poll_iter() {
@@ -84,9 +87,10 @@ fn run(state: State) -> Result<(), failure::Error> {
                 match event {
                     Quit { .. } => break 'main,
                     Window { win_event, .. } => match win_event {
-                        Resized(w, h) => unsafe {
-                            gl.Viewport(0, 0, w, h);
-                        },
+                        Resized(w, h) => {
+                            viewport.update_size(w, h);
+                            viewport.set_used(&gl);
+                        }
                         _ => {}
                     },
                     _ => {}

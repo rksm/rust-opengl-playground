@@ -1,6 +1,8 @@
 mod shader;
+mod viewport;
 
-pub mod data;
 pub mod buffer;
+pub mod data;
 
-pub use self::shader::{Shader,Program, Error};
+pub use self::shader::{Error, Program, Shader};
+pub use self::viewport::Viewport;
