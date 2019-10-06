@@ -10,12 +10,22 @@ edition = "2018"
 walkdir = "*"
 
 [dependencies]
-sdl2 = { version = "0.32.2", features = ["bundled", "static-link"] }
-vec-2-10-10-10 = "0.1.2"
-nalgebra = "0.18.1"
+# housekeeping
 failure = "0.1.5"
+
+# graphics
+sdl2 = { version = "0.32.2", features = ["bundled", "static-link"] }
+nalgebra = "0.18.1"
+
+# gl
+vec-2-10-10-10 = "0.1.2"
 gl = { path = "lib/gl" }
 render_gl_derive = { path = "lib/render_gl_derive" }
+
+# file watcher
+crossbeam-channel = "0.3"
+notify = "=5.0.0-pre.1"
+
 
 [features]
 # default = ["gl_debugr"]

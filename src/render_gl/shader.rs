@@ -3,6 +3,7 @@ use failure::Fail;
 use gl;
 use std;
 use std::ffi::{CStr, CString};
+use std::path::{Path,PathBuf};
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 // helper
@@ -34,6 +35,7 @@ pub enum Error {
 pub struct Program {
     gl: gl::Gl,
     id: gl::types::GLuint,
+    pub paths: Vec<PathBuf>,
 }
 
 impl Program {
@@ -86,7 +88,9 @@ impl Program {
             }
         }
 
-        Ok(Program { gl: gl.clone(), id })
+        let paths = shaders.into_iter().map(|s|s.path.to_path_buf()).collect();
+
+        Ok(Program { gl: gl.clone(), id, paths })
     }
 
     pub fn id(&self) -> gl::types::GLuint {
@@ -113,6 +117,7 @@ impl Drop for Program {
 pub struct Shader {
     gl: gl::Gl,
     id: gl::types::GLuint,
+    path: PathBuf,
 }
 
 impl Shader {
@@ -128,12 +133,21 @@ impl Shader {
             name: name.into(),
             inner: e,
         })?;
-        Shader::from_source(gl, &source, shader_kind)
+        Shader::from_source(gl, &source.content, &source.path.to_path_buf(), shader_kind)
     }
 
-    fn from_source(gl: &gl::Gl, source: &CStr, kind: gl::types::GLuint) -> Result<Shader, Error> {
+    fn from_source(
+        gl: &gl::Gl,
+        source: &CStr,
+        path: &Path,
+        kind: gl::types::GLuint,
+    ) -> Result<Shader, Error> {
         let id = shader_from_source(gl, source, kind)?;
-        Ok(Shader { gl: gl.clone(), id })
+        Ok(Shader {
+            gl: gl.clone(),
+            id,
+            path: path.to_path_buf(),
+        })
     }
 
     pub fn id(&self) -> gl::types::GLuint {

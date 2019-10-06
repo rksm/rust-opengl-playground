@@ -3,7 +3,7 @@ use crate::render_gl::buffer;
 use crate::render_gl::buffer::{ArrayBuffer, VertexArray};
 use crate::render_gl::data;
 use crate::render_gl::Program;
-use crate::resources::Resources;
+use crate::resources::{Reloadable, Resources};
 use failure;
 use gl;
 use render_gl_derive::VertexAttribPointers;
@@ -73,5 +73,26 @@ impl Triangle {
                 3,
             );
         }
+    }
+}
+
+// -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+use std::path::{Path, PathBuf};
+
+impl Reloadable for Triangle {
+    fn reload(&mut self, gl: &gl::Gl, res: &Resources) -> Result<(), failure::Error> {
+        println!("reloading triangle");
+        Program::from_res(&gl, &res, "shaders/triangle")
+            .map(|program| self.program = program)
+            .unwrap_or_else(|err| {
+                println!("Failed to reload triangle. {:?}", err);
+            });
+
+        Ok(())
+    }
+
+    fn get_paths(&self) -> Vec<PathBuf> {
+        self.program.paths.clone()
     }
 }

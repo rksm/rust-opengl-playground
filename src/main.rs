@@ -8,7 +8,7 @@ use failure;
 use nalgebra as na;
 use render_gl::ColorBuffer;
 use render_gl::Viewport;
-use resources::Resources;
+use resources::{Reloadable, ResourceWatcher, Resources};
 use std::path::Path;
 use triangle::Triangle;
 
@@ -24,6 +24,8 @@ struct State {
     viewport: Viewport,
     color_buffer: ColorBuffer,
     fps_counter: FPSCounter,
+    watcher: ResourceWatcher,
+    resources: Resources,
 }
 
 fn setup() -> Result<State, failure::Error> {
@@ -48,14 +50,17 @@ fn setup() -> Result<State, failure::Error> {
 
     let gl_context = window.gl_create_context().map_err(failure::err_msg)?;
     let gl = gl::Gl::load_with(|s| video.gl_get_proc_address(s) as *const std::os::raw::c_void);
-    let res = Resources::from_relative_exe_path(Path::new("assets"))?;
-    let triangle = Triangle::new(&res, &gl)?;
+    let resources = Resources::from_relative_exe_path(Path::new("assets"))?;
+    let triangle = Triangle::new(&resources, &gl)?;
     let viewport = Viewport::for_window(800, 600);
 
     viewport.set_used(&gl);
 
     let color_buffer = ColorBuffer::from_color(na::Vector3::new(0.3, 0.3, 0.5));
     color_buffer.set_used(&gl);
+
+    let mut watcher = ResourceWatcher::new();
+    watcher.add_reloadable(&triangle);
 
     Ok(State {
         _sdl: sdl,
@@ -67,6 +72,8 @@ fn setup() -> Result<State, failure::Error> {
         viewport,
         color_buffer,
         fps_counter,
+        watcher,
+        resources,
     })
 }
 
@@ -74,14 +81,23 @@ fn run(state: State) -> Result<(), failure::Error> {
     match state {
         State {
             gl,
-            triangle,
+            mut triangle,
             window,
             mut event_pump,
             mut viewport,
             color_buffer,
             mut fps_counter,
+            resources,
+            watcher,
             ..
         } => 'main: loop {
+            match watcher.rx.try_recv() {
+                Ok(evt) => {
+                    println!("{:#?}", evt);
+                    triangle.reload(&gl, &resources)?;
+                }
+                Err(_) => {}
+            }
             fps_counter.count();
             color_buffer.clear(&gl);
             triangle.render(&gl);
