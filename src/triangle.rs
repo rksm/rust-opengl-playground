@@ -78,7 +78,7 @@ impl Triangle {
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 
 impl Reloadable for Triangle {
     fn reload(&mut self, gl: &gl::Gl, res: &Resources) -> Result<(), failure::Error> {
@@ -92,7 +92,7 @@ impl Reloadable for Triangle {
         Ok(())
     }
 
-    fn get_paths(&self) -> Vec<PathBuf> {
-        self.program.paths.clone()
+    fn get_paths(&self) -> &[PathBuf] {
+        &self.program.paths
     }
 }

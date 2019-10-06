@@ -87,7 +87,7 @@ impl Resources {
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 pub trait Reloadable {
-    fn get_paths(&self) -> Vec<PathBuf>;
+    fn get_paths(&self) -> &[PathBuf];
     fn reload(&mut self, gl: &gl::Gl, res: &Resources) -> Result<(), failure::Error>;
 }
 
