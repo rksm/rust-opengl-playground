@@ -61,7 +61,7 @@ where
         unsafe {
             gl.BufferData(
                 // target
-                gl::ARRAY_BUFFER,
+                B::BUFFER_TYPE,
                 // size of data in bytes
                 (data.len() * std::mem::size_of::<T>()) as gl::types::GLsizeiptr,
                 // pointer to data

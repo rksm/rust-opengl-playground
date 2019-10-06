@@ -1,6 +1,6 @@
 use crate::render_gl;
 use crate::render_gl::buffer;
-use crate::render_gl::buffer::{ArrayBuffer, VertexArray};
+use crate::render_gl::buffer::{ArrayBuffer, ElementArrayBuffer, VertexArray};
 use crate::render_gl::data;
 use crate::render_gl::Program;
 use crate::resources::{Reloadable, Resources};
@@ -17,15 +17,16 @@ struct Vertex {
     clr: data::u2_u10_u10_u10_rev_float,
 }
 
-pub struct Triangle {
+pub struct Rectangle {
     program: render_gl::Program,
-    _vbo: buffer::ArrayBuffer,
     vao: buffer::VertexArray,
+    _vbo: buffer::ArrayBuffer,
+    _ebo: buffer::ElementArrayBuffer,
 }
 
-impl Triangle {
+impl Rectangle {
     pub fn new(res: &Resources, gl: &gl::Gl) -> Result<Self, failure::Error> {
-        let vertices: Vec<Vertex> = vec![
+       let vertices: Vec<Vertex> = vec![
             Vertex {
                 pos: (-0.5, -0.5, 0.0).into(),
                 clr: (1.0, 0.0, 0.0, 1.0).into(),
@@ -35,24 +36,39 @@ impl Triangle {
                 clr: (0.0, 1.0, 0.0, 1.0).into(),
             },
             Vertex {
-                pos: (0.0, 0.5, 0.0).into(),
+                pos: (0.5, 0.5, 0.0).into(),
+                clr: (1.0, 0.5, 1.0, 1.0).into(),
+            },
+            Vertex {
+                pos: (-0.5, 0.5, 0.0).into(),
                 clr: (0.0, 0.0, 1.0, 1.0).into(),
             },
         ];
+        let indices: Vec<u32> = vec![0, 1, 2, 2, 3, 0];
 
         let vao = VertexArray::new(gl);
         let buffer = ArrayBuffer::new(gl);
+        let element_buffer = ElementArrayBuffer::new(gl);
+
         vao.bind();
+
         buffer.bind();
         buffer.static_draw(&vertices);
         Vertex::vertex_attrib_pointers(&gl);
-        vao.unbind();
-        buffer.unbind();
 
-        Ok(Triangle {
+        element_buffer.bind();
+        element_buffer.static_draw(&indices);
+
+        vao.unbind();
+
+        buffer.unbind();
+        element_buffer.unbind();
+
+        Ok(Rectangle {
             program: Program::from_res(&gl, &res, "shaders/triangle")?,
             vao,
             _vbo: buffer,
+            _ebo: element_buffer,
         })
     }
 
@@ -60,13 +76,11 @@ impl Triangle {
         self.program.set_used();
         self.vao.bind();
         unsafe {
-            gl.DrawArrays(
-                //mode
-                gl::TRIANGLES,
-                // starting index in the enabled arrays
-                0,
-                // number of incies to be rendered
-                3,
+            gl.DrawElements(
+                gl::TRIANGLE_STRIP,
+                6,
+                gl::UNSIGNED_INT,
+                0 as *const gl::types::GLvoid,
             );
         }
     }
@@ -76,13 +90,13 @@ impl Triangle {
 
 use std::path::PathBuf;
 
-impl Reloadable for Triangle {
+impl Reloadable for Rectangle {
     fn reload(&mut self, gl: &gl::Gl, res: &Resources) -> Result<(), failure::Error> {
-        println!("reloading triangle");
+        println!("reloading rectangle");
         Program::from_res(&gl, &res, "shaders/triangle")
             .map(|program| self.program = program)
             .unwrap_or_else(|err| {
-                println!("Failed to reload triangle. {:?}", err);
+                println!("Failed to reload rectangle. {:?}", err);
             });
 
         Ok(())

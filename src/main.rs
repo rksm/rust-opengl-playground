@@ -1,4 +1,5 @@
 mod debug;
+mod rectangle;
 pub mod render_gl;
 pub mod resources;
 mod triangle;
@@ -6,6 +7,7 @@ mod triangle;
 use debug::{failure_to_string, FPSCounter};
 use failure;
 use nalgebra as na;
+use rectangle::Rectangle;
 use render_gl::ColorBuffer;
 use render_gl::Viewport;
 use resources::{Reloadable, ResourceWatcher, Resources};
@@ -19,6 +21,7 @@ struct State {
     gl: gl::Gl,
     _gl_context: sdl2::video::GLContext,
     triangle: Triangle,
+    rectangle: Rectangle,
     window: sdl2::video::Window,
     event_pump: sdl2::EventPump,
     viewport: Viewport,
@@ -52,6 +55,7 @@ fn setup() -> Result<State, failure::Error> {
     let gl = gl::Gl::load_with(|s| video.gl_get_proc_address(s) as *const std::os::raw::c_void);
     let resources = Resources::from_relative_exe_path(Path::new("assets"))?;
     let triangle = Triangle::new(&resources, &gl)?;
+    let rectangle = Rectangle::new(&resources, &gl)?;
     let viewport = Viewport::for_window(800, 600);
 
     viewport.set_used(&gl);
@@ -61,12 +65,14 @@ fn setup() -> Result<State, failure::Error> {
 
     let mut watcher = ResourceWatcher::new();
     watcher.add_reloadable(&triangle);
+    watcher.add_reloadable(&rectangle);
 
     Ok(State {
         _sdl: sdl,
         _gl_context: gl_context,
         gl,
         triangle,
+        rectangle,
         window,
         event_pump,
         viewport,
@@ -82,6 +88,7 @@ fn run(state: State) -> Result<(), failure::Error> {
         State {
             gl,
             mut triangle,
+            mut rectangle,
             window,
             mut event_pump,
             mut viewport,
@@ -91,16 +98,19 @@ fn run(state: State) -> Result<(), failure::Error> {
             watcher,
             ..
         } => 'main: loop {
-            match watcher.rx.try_recv() {
-                Ok(evt) => {
-                    println!("{:#?}", evt);
-                    triangle.reload(&gl, &resources)?;
-                }
-                Err(_) => {}
-            }
+                       match watcher.rx.try_recv() {
+                           Ok(evt) => {
+                               println!("{:#?}", evt);
+                               triangle.reload(&gl, &resources)?;
+                               rectangle.reload(&gl, &resources)?;
+                           }
+                           Err(_) => {}
+                       }
+
             fps_counter.count();
             color_buffer.clear(&gl);
-            triangle.render(&gl);
+            // triangle.render(&gl);
+            rectangle.render(&gl);
             window.gl_swap_window();
 
             for event in event_pump.poll_iter() {

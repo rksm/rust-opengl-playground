@@ -1,6 +1,3 @@
-// mod bindings {
-//     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
-// }
 
 pub use bindings::*;
 pub use bindings::Gl as InnerGl;
@@ -34,7 +31,13 @@ impl Deref for Gl {
 
 // -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
+// mod bindings {
+//     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+// }
+
+
 mod bindings {
+
         mod __gl_imports {
             pub use std::mem;
             pub use std::marker::Send;
@@ -4791,4 +4794,6 @@ _priv: ()
 }
 
         unsafe impl __gl_imports::Send for Gl {}
+
 }
+

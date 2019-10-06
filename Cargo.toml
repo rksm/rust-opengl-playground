@@ -28,5 +28,5 @@ notify = "=5.0.0-pre.1"
 
 
 [features]
-# default = ["gl_debugr"]
+# default = ["gl_debug"]
 gl_debug = ["gl/debug"]
