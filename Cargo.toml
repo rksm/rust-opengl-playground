@@ -23,7 +23,7 @@ gl = { path = "lib/gl" }
 render_gl_derive = { path = "lib/render_gl_derive" }
 
 # file watcher
-crossbeam-channel = "0.3"
+crossbeam-channel = "0.4"
 notify = "=5.0.0-pre.1"
 
 
